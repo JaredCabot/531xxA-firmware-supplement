@@ -1,0 +1,18 @@
+# Push only the repository files below. Everything else in this working
+# folder (work-in-progress scripts, loose firmware dumps, the Manuals folder,
+# calibration backups, Python caches) stays local and is not committed.
+
+# Ignore everything at the top level by default.
+/*
+
+# Repository files (kept):
+!/.gitignore
+!/README.md
+!/531xxA_Firmware_Supplement.pdf
+!/531xx_eeprom_tool.py
+!/531xx_gpib_tool.py
+
+# Firmware image archives:
+!/53131A_Firmware_v4243.zip
+!/53132A_Firmware_v4613.zip
+!/53181A_Firmware_v4243.zip
