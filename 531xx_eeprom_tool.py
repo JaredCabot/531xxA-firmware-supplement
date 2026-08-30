@@ -10,6 +10,14 @@ the dump, edit it with this tool, then write it back.
   * Show and change the Channel 3 prescaler option
   * Reset (factory-clear) the calibration security code   -- see the warning
 
+When changing the option, if the validity signature ("HP53131 is a winner!") is
+missing -- as on a unit that never shipped with the optional channel, whose
+32-byte header is blank -- the tool rebuilds a complete, firmware-valid header
+(signature, $16 config word, $1A status and the header checksum) around your
+chosen option, leaving the calibration records at $20 onward untouched. This
+mirrors what the instrument's own firmware writes when the option is set live
+over GPIB (:DIAGnostic:OPTion:HFR), so the two routes produce the same header.
+
 Nothing here talks to the instrument; it only edits dump files.  Stdlib only,
 Python 3.6+.  Layout and encodings were recovered by disassembly of the counter
 firmware (revs 3427-4613); see the accompanying Firmware Supplement.
@@ -29,6 +37,14 @@ CH3_STATUS   = 0x1A                       # status / revision byte
 CH3_OPTBYTE  = 0x1B                       # bits 0-6 option code, bit 7 coupling
 CH3_VALUE    = 0x1C                       # prescaler ratio / 128 (boot uses $1C*128)
 CH3_CFG32    = 0x16                       # 32-bit config value (BE)
+
+# Fixed (non-option) header field values used when rebuilding a blank header.
+# The firmware compares the $16 config word at read; every factory option dump
+# examined (53181A 1.5/3.0 GHz, and the 53131A example in the supplement) stores
+# the same constant 0x00000A3B (= 2619, the value :DIAG:OPT:CODE? reports), so it
+# is a fixed record marker, not an option-specific field.
+CH3_CFG_DEFAULT    = 0x00000A3B
+CH3_STATUS_DEFAULT = 0x01
 
 # --- Channel 3 option encoding (EEPROM $1B low 7 bits -> *OPT? string) ---------
 #     recovered from the boot reader jump table + the *OPT? formatter, and
@@ -60,7 +76,23 @@ def hdr_valid(buf):
     cs_ok  = struct.unpack(">H", bytes(buf[CKSUM_OFF:CKSUM_OFF + 2]))[0] == checksum(buf)
     return sig_ok, cs_ok
 
+def signature_present(buf):
+    return bytes(buf[SIG_OFF:SIG_OFF + len(SIGNATURE)]) == SIGNATURE
+
+def rebuild_blank_header_fields(buf):
+    """Fill the fixed, non-option header fields for a blank ($FF) header so that
+    writing the signature, option bytes and checksum yields a complete,
+    firmware-valid header. Only touches fields that are blank/uninitialised, so a
+    header that already carries real values is left alone. Leaves the record data
+    at $20 onward (the $5313 calibration slots) untouched."""
+    cfg = struct.unpack(">I", bytes(buf[CH3_CFG32:CH3_CFG32 + 4]))[0]
+    if cfg in (0xFFFFFFFF, 0x00000000):
+        struct.pack_into(">I", buf, CH3_CFG32, CH3_CFG_DEFAULT)
+    if buf[CH3_STATUS] in (0x00, 0xFF):
+        buf[CH3_STATUS] = CH3_STATUS_DEFAULT
+
 def fix_header(buf):
+    """Write the validity signature and recompute the header checksum."""
     buf[SIG_OFF:SIG_OFF + len(SIGNATURE)] = SIGNATURE
     struct.pack_into(">H", buf, CKSUM_OFF, checksum(buf))
 
@@ -189,20 +221,32 @@ class Tool:
         if not (128 <= pval <= 16384) or (pval // 128) * 128 != pval:
             print("  Cancelled (ratio must be a multiple of 128 in 128..16384)."); return
         new1c = pval // 128
+        # If the validity signature is missing (a header never written, e.g. a
+        # unit not shipped with the optional channel), rebuild the fixed header
+        # fields so writing the option produces a complete, valid header rather
+        # than one the firmware would reject. The $5313 calibration records at
+        # $20 onward are left untouched.
+        sig_missing = not signature_present(self.buf)
+        if sig_missing:
+            rebuild_blank_header_fields(self.buf)
         # keep status sane if the header was blank
-        if self.buf[CH3_STATUS] in (0x00, 0xFF): self.buf[CH3_STATUS] = 0x01
+        if self.buf[CH3_STATUS] in (0x00, 0xFF): self.buf[CH3_STATUS] = CH3_STATUS_DEFAULT
         old   = self.buf[CH3_OPTBYTE]
         old1c = self.buf[CH3_VALUE]
         self.buf[CH3_OPTBYTE] = newb
         self.buf[CH3_VALUE]   = new1c
         fix_header(self.buf)
+        if sig_missing:
+            print("  Header signature was MISSING - rebuilt it:")
+            print("    wrote '%s' @ $02, config $%08X @ $16, status $%02X @ $1A."
+                  % (SIGNATURE.decode(), CH3_CFG_DEFAULT, self.buf[CH3_STATUS]))
         print("  $1B: $%02X -> $%02X  (option %s, %s)"
               % (old, newb, opt, "AC" if coup_ac else "DC"))
-        print("  $1C: $%02X -> $%02X  (prescale %d) ; header checksum updated."
+        print("  $1C: $%02X -> $%02X  (prescale %d) ; header signature + checksum written."
               % (old1c, new1c, pval))
         print("  Review with 'Show info', then Save and write the dump back to the chip.")
         print("  (Equivalent live command:  :DIAGnostic:OPTion:HFR %d,N%s,%d  - see supplement)"
-              % (pval, opt, 0 if coup_ac else 1))
+              % (pval, opt, 1 if coup_ac else 0))
 
     # ---- calibration password
     def reset_password(self):
