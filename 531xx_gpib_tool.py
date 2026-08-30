@@ -44,6 +44,22 @@ OPT_ENUM = {"015": "N015", "030": "N030", "050": "N050",
             "124": "N124", "160": "N160", "200": "N200", "none": "NONE"}
 DEFAULT_CODES = {"53131A": "53131", "53132A": "53132", "53181A": "53181"}
 
+# Canonical prescaler divide ratio per Channel 3 option (EEPROM $1C = ratio/128).
+#   030=128 and 050,124=512 are confirmed on hardware/dumps; 015 inferred (shares
+#   the 1.5/3.0 assembly); 160/200 provisional. The option keyword ALSO fixes the
+#   frequency ceiling, so the prescale and the option must describe one real board.
+OPT_PRESCALE = {"015": 128, "030": 128, "050": 512, "124": 512, "160": 512, "200": 512}
+
+def enum_to_opt(enum):
+    """'N124' -> '124'; pass a bare '124' through."""
+    e = (enum or "").upper()
+    return e[1:] if e.startswith("N") else e
+
+def opts_for_ratio(ratio):
+    """Options whose canonical prescaler matches this divide ratio."""
+    return [o for o in ("015", "030", "050", "124", "160", "200")
+            if OPT_PRESCALE[o] == ratio]
+
 def ask(p, d=None):
     try:
         s = input(p).strip()
@@ -398,11 +414,45 @@ def measure_ch3_ratio(c, opt_enum):
     if not (128 <= n_pow2 <= 16384):
         print("  WARNING: %d is outside the firmware range 128..16384 - re-check F and the"
               " connection." % n_pow2)
-    if confirm("  Store prescale %d now (:DIAG:OPT:HFR %d,%s,1)?" % (n_pow2, n_pow2, enum)):
-        c.w(":DIAGnostic:OPTion:HFR %d,%s,1" % (n_pow2, enum))
+    # Guard: the option keyword sets the frequency ceiling as well as the *OPT?
+    # string, so the measured ratio and the option must describe ONE real board.
+    # Storing the right ratio against the wrong (old) keyword leaves that option's
+    # ceiling in place; inputs above it read over-range (9.9E37) and Channel 3
+    # then returns no valid reading (-230 "Data corrupt or stale", display dashes).
+    store_enum = enum
+    opt = enum_to_opt(enum)
+    expected = OPT_PRESCALE.get(opt)
+    if expected is not None and n_pow2 != expected and 128 <= n_pow2 <= 16384:
+        cand = opts_for_ratio(n_pow2)
+        print("\n  ! The measured ratio (/%d) does NOT match option %s, which uses /%d."
+              % (n_pow2, opt, expected))
+        print("    The option keyword also sets the frequency ceiling, so storing /%d"
+              % n_pow2)
+        print("    against %s would keep option %s's ceiling: inputs above it read as"
+              % (enum, opt))
+        print("    over-range (9.9E37) and Channel 3 returns no valid reading")
+        print("    (-230 'Data corrupt or stale', display all dashes) until corrected.")
+        if cand:
+            print("    A /%d prescaler matches - pick the one that matches your board's" % n_pow2)
+            print("    top frequency:")
+            for o in cand:
+                print("        %s  %s" % (o, CH3_OPT[o]))
+        new = ask("  Option to store the ratio against (e.g. %s), blank = keep %s: "
+                  % ("/".join(cand) if cand else "N124", opt))
+        if new:
+            ne = "N" + enum_to_opt(new).zfill(3)
+            if ne in opt_enum.values():
+                store_enum = ne
+            else:
+                print("  '%s' not recognised - keeping %s (likely will not read above its"
+                      " ceiling)." % (new, enum))
+    if confirm("  Store prescale %d now (:DIAG:OPT:HFR %d,%s,1)?"
+               % (n_pow2, n_pow2, store_enum)):
+        c.w(":DIAGnostic:OPTion:HFR %d,%s,1" % (n_pow2, store_enum))
         try:
             R2 = float(c.q(":READ?"))
             print("  Channel 3 now reads %.6g Hz (input is %.6g Hz)." % (R2, F))
+            print("  *OPT? now reports: %s" % c.opt())
         except Exception:
             pass
     else:
@@ -424,7 +474,7 @@ def change_ch3(c):
     #   030 = 128  (measured; $1C=$01)   050 = 512  (dump+hw; $1C=$04)
     #   124 = 512  (dump+hw; $1C=$04)    015 = 128  (inferred, shares 1.5/3.0 assy)
     #   160/200 = 512+ (53181A, untested - read $1C from a dump or measure).
-    PRESCALE = {"015": 128, "030": 128, "050": 512, "124": 512, "160": 512, "200": 512}
+    PRESCALE = OPT_PRESCALE
     PCONF    = {"015": "infer", "030": "CONF", "050": "CONF", "124": "CONF",
                 "160": "untst", "200": "untst"}
     code, desc = c.ch3()
@@ -448,6 +498,14 @@ def change_ch3(c):
              str(dflt) if dflt else "")
     if not pr.isdigit() or not (128 <= int(pr) <= 16384):
         print("  Cancelled (prescale must be 128-16384)."); return
+    if int(pr) != PRESCALE[opt]:
+        print("  Note: /%s differs from option %s's usual /%d. The option keyword sets the"
+              % (pr, opt, PRESCALE[opt]))
+        print("  frequency ceiling too, so make sure %s matches the fitted board - a mismatched"
+              % opt)
+        print("  pair reads over-range above the ceiling (-230 'Data corrupt or stale', dashes).")
+        if not confirm("  Proceed with /%s on option %s anyway?" % (pr, opt)):
+            print("  Cancelled."); return
     cp = ask("  Coupling flag 0 or 1 [1] (stored; 1 = factory setting): ", "1")
     if cp not in ("0", "1"):
         print("  Cancelled (coupling must be 0 or 1)."); return
