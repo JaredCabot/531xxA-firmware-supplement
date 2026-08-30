@@ -14,19 +14,16 @@ Hewlett-Packard or Keysight, and carries no endorsement.
 
 - `531xxA_Firmware_Supplement.pdf` - the full reference document. Read this for
   the detail; the tools below are companions to it.
-- `531xx_eeprom_tool.py` - offline editor for a saved dump of the counter's NVRAM
-  (the AT28C64B EEPROM at CPU address $400000, U14 on the 53181A; read it with a
-  programmer). Reads and decodes the store, changes the Channel 3 option, and can
-  factory-blank the image to reset a forgotten calibration security code. This is
-  a small configuration/calibration chip, separate from the program firmware below.
+- `531xx_eeprom_tool.py` - offline editor for a .BIN file dump of the counter's
+  NVRAM (U14, an AT28C64B EEPROM). Reads and decodes the store, changes the
+  Channel 3 option, and can factory-blank the image to reset a forgotten
+  calibration security code.
 - `531xx_gpib_tool.py` - live service tool over GPIB. Identifies the counter,
   backs up and restores calibration data, sets the Channel 3 option, manages the
   calibration security code and sends raw SCPI.
-- Program firmware image archives for the three counters (`*.zip`) - the U8-U11
-  program EPROMs (four 128 KB devices per instrument), provided for reference, for
-  disassembly, and for reburning EPROMs. These hold the instrument's firmware and
-  are a different thing from the U14 NVRAM the EEPROM tool edits; the EEPROM tool
-  does not operate on them.
+- Firmware image archives for the three counters (`*.zip`) - the U8-U11 program
+  EPROMs (four 128 KB devices per instrument), provided for reference, for
+  disassembly, and for reburning EPROMs. The EEPROM tool does not operate on these.
 
 ## Requirements
 
