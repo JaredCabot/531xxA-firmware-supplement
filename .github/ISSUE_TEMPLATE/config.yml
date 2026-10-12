@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Firmware and Service Supplement
+    url: https://github.com/JaredCabot/531xxA-firmware-supplement/blob/main/531xxA_Firmware_Supplement.pdf
+    about: "The full reference: EPROM images, the NVRAM store, Channel 3, service menus and pForth."

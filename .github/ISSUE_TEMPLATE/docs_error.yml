@@ -1,0 +1,53 @@
+name: Error in the documentation
+description: Something in the documents is wrong, unclear or missing
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the correction. Errors found against real hardware or the original documents are the most valuable reports this project gets.
+  - type: dropdown
+    id: document
+    attributes:
+      label: Which document?
+      options:
+        - "531xxA_Firmware_Supplement.pdf"
+        - "README.md"
+        - "Something else"
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Page, section or address
+      placeholder: "Section 4.2, page 37"
+    validations:
+      required: true
+  - type: textarea
+    id: says
+    attributes:
+      label: What it says now
+      description: Copy the line, or describe the table or figure.
+    validations:
+      required: true
+  - type: textarea
+    id: should
+    attributes:
+      label: What it should say
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How do you know?
+      description: For example a behaviour seen on your counter - say which model, firmware version and options.
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Photos, captures or anything else that helps.
+    validations:
+      required: false
