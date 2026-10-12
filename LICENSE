@@ -1,0 +1,54 @@
+Copyright (c) 2026 Jared Cabot
+
+This repository is licensed in parts. Each file is covered by the section
+that names it; the last section lists what is not licensed here at all.
+
+================================================================================
+Code - MIT License
+================================================================================
+
+531xx_eeprom_tool.py and 531xx_gpib_tool.py are licensed under the MIT
+License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+Documentation - Creative Commons Attribution 4.0 International (CC BY 4.0)
+================================================================================
+
+531xxA_Firmware_Supplement.pdf and README.md are licensed under the Creative
+Commons Attribution 4.0 International License.
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit, link to the license, and
+indicate if changes were made.
+
+Full text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+================================================================================
+Not covered
+================================================================================
+
+The firmware image archives - 53131A_Firmware_v4243.zip,
+53132A_Firmware_v4613.zip and 53181A_Firmware_v4243.zip - contain the
+manufacturer's program EPROM images for these counters. They are not the
+work of this project, this license grants no rights in them, and copyright in
+them remains with its owner (Hewlett-Packard / Agilent Technologies, now
+Keysight Technologies). They are included for reference by owners of these
+instruments.
